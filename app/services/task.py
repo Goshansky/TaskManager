@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
-from app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskStatus, TaskPriority
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -38,6 +38,18 @@ def create_task(db: Session, task: TaskCreate):
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+
+    from app.tasks import process_task
+
+    priority_value = 3 if db_task.priority == TaskPriority.HIGH else (
+        2 if db_task.priority == TaskPriority.MEDIUM else 1
+    )
+
+    process_task.apply_async(
+        args=[db_task.id],
+        priority=priority_value
+    )
+    
     return db_task
 
 
@@ -68,3 +80,19 @@ def delete_task(db: Session, task_id: int):
     db.delete(db_task)
     db.commit()
     return db_task
+
+
+def cancel_task(db: Session, task_id: int) -> Dict[str, Any]:
+    db_task = get_task(db, task_id)
+    
+    if not db_task:
+        return {"success": False, "message": "Task not found"}
+    
+    if db_task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
+        return {"success": False, "message": f"Task is already in final state: {db_task.status}"}
+
+    from app.tasks import cancel_task as celery_cancel_task
+
+    celery_cancel_task.delay(task_id)
+    
+    return {"success": True, "message": "Task cancellation initiated"}
