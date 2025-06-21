@@ -1,3 +1,3 @@
-from app.schemas.task import TaskBase, TaskCreate, TaskUpdate, TaskResponse
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, BrokenTaskCreate, RetryTaskCreate, InternalTaskUpdate
 
-__all__ = ["TaskBase", "TaskCreate", "TaskUpdate", "TaskResponse"]
+__all__ = ["TaskCreate", "TaskResponse", "TaskUpdate", "BrokenTaskCreate", "RetryTaskCreate", "InternalTaskUpdate"]

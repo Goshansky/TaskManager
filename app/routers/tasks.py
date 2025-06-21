@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 
 from app.database import get_db
-from app.schemas import TaskCreate, TaskResponse, TaskUpdate
-from app.services import create_task, get_task, get_tasks, update_task, delete_task, cancel_task
+from app.schemas import TaskCreate, TaskResponse, TaskUpdate, BrokenTaskCreate, RetryTaskCreate
+from app.services import create_task, get_task, get_tasks, update_task, delete_task, cancel_task, create_broken_task, create_retry_task
 
 router = APIRouter(
     prefix="/tasks",
@@ -16,6 +16,16 @@ router = APIRouter(
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 def create_new_task(task: TaskCreate, db: Session = Depends(get_db)):
     return create_task(db=db, task=task)
+
+
+@router.post("/broken", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+def create_new_broken_task(task: BrokenTaskCreate, db: Session = Depends(get_db)):
+    return create_broken_task(db=db, task=task)
+
+
+@router.post("/retry", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+def create_new_retry_task(task: RetryTaskCreate, db: Session = Depends(get_db)):
+    return create_retry_task(db=db, task=task)
 
 
 @router.get("/", response_model=List[TaskResponse])
@@ -42,7 +52,14 @@ def update_existing_task(task_id: int, task: TaskUpdate, db: Session = Depends(g
     db_task = get_task(db=db, task_id=task_id)
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    return update_task(db=db, task_id=task_id, task=task)
+
+    restricted_update = TaskUpdate(
+        title=task.title,
+        description=task.description,
+        priority=task.priority
+    )
+    
+    return update_task(db=db, task_id=task_id, task=restricted_update)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -56,7 +73,6 @@ def delete_existing_task(task_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{task_id}/cancel", response_model=Dict[str, Any])
 def cancel_existing_task(task_id: int, db: Session = Depends(get_db)):
-    """Cancel a task that is currently in progress"""
     db_task = get_task(db=db, task_id=task_id)
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")

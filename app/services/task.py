@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 from app.models.task import Task, TaskStatus, TaskPriority
-from app.schemas.task import TaskCreate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskUpdate, BrokenTaskCreate, RetryTaskCreate, InternalTaskUpdate
 
 
 def get_task(db: Session, task_id: int):
@@ -53,12 +53,53 @@ def create_task(db: Session, task: TaskCreate):
     return db_task
 
 
-def update_task(db: Session, task_id: int, task: TaskUpdate):
+def create_broken_task(db: Session, task: BrokenTaskCreate):
+    db_task = Task(
+        title=task.title,
+        description=task.description,
+        priority=task.priority,
+        status=TaskStatus.NEW
+    )
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+
+    from app.tasks import process_broken_task
+
+    process_broken_task.apply_async(
+        args=[db_task.id],
+    )
+    
+    return db_task
+
+
+def create_retry_task(db: Session, task: RetryTaskCreate):
+    db_task = Task(
+        title=task.title,
+        description=task.description,
+        priority=task.priority,
+        status=TaskStatus.NEW
+    )
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+
+    from app.tasks import process_retry_task
+
+    process_retry_task.apply_async(
+        args=[db_task.id, task.retry_count],
+    )
+    
+    return db_task
+
+
+def update_task(db: Session, task_id: int, task: Union[TaskUpdate, InternalTaskUpdate]):
     db_task = get_task(db, task_id)
     
     update_data = task.dict(exclude_unset=True)
 
-    if "status" in update_data:
+    # Handle status changes (only for InternalTaskUpdate)
+    if isinstance(task, InternalTaskUpdate) and "status" in update_data:
         new_status = update_data["status"]
 
         if new_status == TaskStatus.IN_PROGRESS and db_task.status != TaskStatus.IN_PROGRESS:
