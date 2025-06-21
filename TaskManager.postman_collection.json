@@ -53,6 +53,62 @@
 			"response": []
 		},
 		{
+			"name": "Создать заведомо сломанную задачу",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"Сломанная задача\",\n    \"description\": \"Эта задача гарантированно завершится с ошибкой\",\n    \"priority\": \"HIGH\",\n    \"force_error\": true\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/tasks/broken",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"tasks",
+						"broken"
+					]
+				},
+				"description": "Создание задачи, которая гарантированно завершится с ошибкой"
+			},
+			"response": []
+		},
+		{
+			"name": "Создать задачу с повторными попытками",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"Задача с повторными попытками\",\n    \"description\": \"Эта задача будет повторяться несколько раз перед успешным выполнением\",\n    \"priority\": \"HIGH\",\n    \"retry_count\": 3\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/tasks/retry",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"tasks",
+						"retry"
+					]
+				},
+				"description": "Создание задачи, которая будет повторяться несколько раз перед успешным выполнением"
+			},
+			"response": []
+		},
+		{
 			"name": "Получить все задачи",
 			"request": {
 				"method": "GET",
@@ -124,7 +180,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"title\": \"Обновленная задача\",\n    \"status\": \"IN_PROGRESS\"\n}"
+					"raw": "{\n    \"title\": \"Обновленная задача\",\n    \"description\": \"Обновленное описание задачи\",\n    \"priority\": \"HIGH\"\n}"
 				},
 				"url": {
 					"raw": "{{base_url}}/tasks/1",
@@ -136,63 +192,27 @@
 						"1"
 					]
 				},
-				"description": "Обновление существующей задачи"
+				"description": "Обновление существующей задачи (только title, description и priority)"
 			},
 			"response": []
 		},
 		{
-			"name": "Изменить статус задачи на COMPLETED",
+			"name": "Отменить задачу",
 			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"status\": \"COMPLETED\",\n    \"result\": \"Задача успешно выполнена\"\n}"
-				},
+				"method": "POST",
+				"header": [],
 				"url": {
-					"raw": "{{base_url}}/tasks/1",
+					"raw": "{{base_url}}/tasks/1/cancel",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
 						"tasks",
-						"1"
+						"1",
+						"cancel"
 					]
 				},
-				"description": "Изменение статуса задачи на COMPLETED с указанием результата"
-			},
-			"response": []
-		},
-		{
-			"name": "Изменить статус задачи на FAILED",
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"status\": \"FAILED\",\n    \"error_info\": \"Произошла ошибка при выполнении задачи\"\n}"
-				},
-				"url": {
-					"raw": "{{base_url}}/tasks/1",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"tasks",
-						"1"
-					]
-				},
-				"description": "Изменение статуса задачи на FAILED с указанием информации об ошибке"
+				"description": "Отмена выполнения задачи"
 			},
 			"response": []
 		},
