@@ -18,10 +18,6 @@ class BrokenTaskCreate(TaskBase):
     force_error: bool = True
 
 
-class RetryTaskCreate(TaskBase):
-    retry_count: int = Field(default=3, ge=1, le=5)
-
-
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
