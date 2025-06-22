@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Manager - Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .result-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .result-cell:hover {
+            white-space: normal;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Task Manager Dashboard</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">RabbitMQ Status</h2>
+                <div id="rabbitmq-stats" class="space-y-2">
+                    <p class="text-gray-600">Loading...</p>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Task Statistics</h2>
+                <div id="task-stats" class="space-y-2">
+                    <p class="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Tasks by Status</h2>
+                <div class="chart-container">
+                    <canvas id="status-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Tasks by Priority</h2>
+                <div class="chart-container">
+                    <canvas id="priority-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Recent Tasks</h2>
+            
+            <!-- Pagination controls -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-sm text-gray-600">
+                    Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prev-page" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Previous</button>
+                    <button id="next-page" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Next</button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Started</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Completed</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Result</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body">
+                        <tr>
+                            <td colspan="9" class="py-4 px-6 text-center text-gray-500">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let pageSize = 10;
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function truncateText(text, maxLength = 50) {
+            if (!text) return 'N/A';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch(`/monitor/stats?page=${currentPage}&page_size=${pageSize}`);
+                const data = await response.json();
+
+                totalPages = data.tasks.total_pages || 1;
+                currentPage = data.tasks.current_page || 1;
+                document.getElementById('current-page').textContent = currentPage;
+                document.getElementById('total-pages').textContent = totalPages;
+
+                document.getElementById('prev-page').disabled = currentPage <= 1;
+                document.getElementById('next-page').disabled = currentPage >= totalPages;
+
+                const rabbitmqStats = document.getElementById('rabbitmq-stats');
+                rabbitmqStats.innerHTML = `
+                    <p><strong>Queue:</strong> ${data.rabbitmq.queue_name}</p>
+                    <p><strong>Messages:</strong> ${data.rabbitmq.message_count}</p>
+                    <p><strong>Consumers:</strong> ${data.rabbitmq.consumer_count}</p>
+                    <p><strong>Status:</strong> <span class="${data.rabbitmq.connection_status === 'connected' ? 'text-green-600' : 'text-red-600'}">${data.rabbitmq.connection_status}</span></p>
+                `;
+
+                const taskStats = document.getElementById('task-stats');
+                taskStats.innerHTML = `
+                    <p><strong>Total Tasks:</strong> ${data.tasks.total_tasks}</p>
+                    <p><strong>Average Processing Time:</strong> ${data.tasks.processing_time.avg_seconds} seconds</p>
+                    <p><strong>Min Processing Time:</strong> ${data.tasks.processing_time.min_seconds} seconds</p>
+                    <p><strong>Max Processing Time:</strong> ${data.tasks.processing_time.max_seconds} seconds</p>
+                `;
+
+                const statusLabels = Object.keys(data.tasks.status_counts);
+                const statusData = Object.values(data.tasks.status_counts);
+                
+                if (window.statusChart) {
+                    window.statusChart.data.labels = statusLabels;
+                    window.statusChart.data.datasets[0].data = statusData;
+                    window.statusChart.update();
+                } else {
+                    const statusCtx = document.getElementById('status-chart').getContext('2d');
+                    window.statusChart = new Chart(statusCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: statusLabels,
+                            datasets: [{
+                                label: 'Tasks by Status',
+                                data: statusData,
+                                backgroundColor: [
+                                    'rgba(54, 162, 235, 0.5)', // NEW
+                                    'rgba(255, 206, 86, 0.5)', // PENDING
+                                    'rgba(75, 192, 192, 0.5)', // IN_PROGRESS
+                                    'rgba(153, 102, 255, 0.5)', // COMPLETED
+                                    'rgba(255, 99, 132, 0.5)', // FAILED
+                                    'rgba(201, 203, 207, 0.5)'  // CANCELLED
+                                ],
+                                borderColor: [
+                                    'rgb(54, 162, 235)',
+                                    'rgb(255, 206, 86)',
+                                    'rgb(75, 192, 192)',
+                                    'rgb(153, 102, 255)',
+                                    'rgb(255, 99, 132)',
+                                    'rgb(201, 203, 207)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const priorityLabels = Object.keys(data.tasks.priority_counts);
+                const priorityData = Object.values(data.tasks.priority_counts);
+                
+                if (window.priorityChart) {
+                    window.priorityChart.data.labels = priorityLabels;
+                    window.priorityChart.data.datasets[0].data = priorityData;
+                    window.priorityChart.update();
+                } else {
+                    const priorityCtx = document.getElementById('priority-chart').getContext('2d');
+                    window.priorityChart = new Chart(priorityCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: priorityLabels,
+                            datasets: [{
+                                label: 'Tasks by Priority',
+                                data: priorityData,
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.5)',  // LOW
+                                    'rgba(255, 206, 86, 0.5)',  // MEDIUM
+                                    'rgba(54, 162, 235, 0.5)'   // HIGH
+                                ],
+                                borderColor: [
+                                    'rgb(255, 99, 132)',
+                                    'rgb(255, 206, 86)',
+                                    'rgb(54, 162, 235)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+
+                const taskTableBody = document.getElementById('task-table-body');
+                taskTableBody.innerHTML = '';
+                
+                if (data.tasks.tasks && data.tasks.tasks.length > 0) {
+                    data.tasks.tasks.forEach(task => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="py-2 px-4 border-b border-gray-200">${task.id}</td>
+                            <td class="py-2 px-4 border-b border-gray-200">${task.title}</td>
+                            <td class="py-2 px-4 border-b border-gray-200">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
+                                     task.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                                     task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                                     task.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                     task.status === 'CANCELLED' ? 'bg-gray-100 text-gray-800' : 'bg-purple-100 text-purple-800'}">
+                                    ${task.status}
+                                </span>
+                            </td>
+                            <td class="py-2 px-4 border-b border-gray-200">${task.priority}</td>
+                            <td class="py-2 px-4 border-b border-gray-200">${formatDate(task.created_at)}</td>
+                            <td class="py-2 px-4 border-b border-gray-200">${formatDate(task.started_at)}</td>
+                            <td class="py-2 px-4 border-b border-gray-200">${formatDate(task.completed_at)}</td>
+                            <td class="py-2 px-4 border-b border-gray-200 result-cell" title="${task.result || 'N/A'}">${task.result || 'N/A'}</td>
+                            <td class="py-2 px-4 border-b border-gray-200 result-cell" title="${task.error_info || 'N/A'}">${task.error_info || 'N/A'}</td>
+                        `;
+                        taskTableBody.appendChild(row);
+                    });
+                } else {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="9" class="py-4 px-6 text-center text-gray-500">No tasks found</td>`;
+                    taskTableBody.appendChild(row);
+                }
+                
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        }
+
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                updateDashboard();
+            }
+        });
+        
+        document.getElementById('next-page').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateDashboard();
+            }
+        });
+
+        updateDashboard();
+        setInterval(updateDashboard, 5000);
+    </script>
+</body>
+</html>
