@@ -81,34 +81,6 @@
 			"response": []
 		},
 		{
-			"name": "Создать задачу с повторными попытками",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"title\": \"Задача с повторными попытками\",\n    \"description\": \"Эта задача будет повторяться несколько раз перед успешным выполнением\",\n    \"priority\": \"HIGH\",\n    \"retry_count\": 3\n}"
-				},
-				"url": {
-					"raw": "{{base_url}}/tasks/retry",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"tasks",
-						"retry"
-					]
-				},
-				"description": "Создание задачи, которая будет повторяться несколько раз перед успешным выполнением"
-			},
-			"response": []
-		},
-		{
 			"name": "Получить все задачи",
 			"request": {
 				"method": "GET",
@@ -232,6 +204,56 @@
 					]
 				},
 				"description": "Удаление задачи по её идентификатору"
+			},
+			"response": []
+		},
+		{
+			"name": "Получить статистику мониторинга",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/monitor/stats",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"monitor",
+						"stats"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"disabled": true
+						},
+						{
+							"key": "page_size",
+							"value": "10",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Получение статистики по задачам и RabbitMQ"
+			},
+			"response": []
+		},
+		{
+			"name": "Открыть дашборд мониторинга",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/monitor/dashboard",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"monitor",
+						"dashboard"
+					]
+				},
+				"description": "Открытие веб-интерфейса мониторинга задач"
 			},
 			"response": []
 		}
