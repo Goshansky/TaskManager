@@ -18,13 +18,17 @@ services:
       timeout: 5s
       retries: 5
       
-  redis:
-    image: redis:7
-    container_name: task_manager_redis
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: task_manager_rabbitmq
     ports:
-      - "6379:6379"
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,38 +44,34 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      rabbitmq:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/task_manager
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/task_manager
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
       
   worker:
     build: .
     container_name: task_manager_worker
-    command: celery -A app.worker.celery worker --loglevel=info
+    command: python worker.py
     volumes:
       - .:/app
     depends_on:
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/task_manager
-      - REDIS_URL=redis://redis:6379/0
-      
-  flower:
-    build: .
-    container_name: task_manager_flower
-    command: celery -A app.worker.celery flower --port=5555
-    volumes:
-      - .:/app
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-      - worker
-    environment:
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/task_manager
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
+      - TASK_CONCURRENCY=4
 
 volumes:
   postgres_data: 

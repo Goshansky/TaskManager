@@ -1,133 +1,130 @@
-# Task Manager API
+# Task Manager
 
-Асинхронный сервис для управления задачами с возможностью масштабирования и отказоустойчивости.
+Асинхронный сервис управления задачами с использованием FastAPI, SQLAlchemy, RabbitMQ и asyncio.
 
-## Функциональные возможности
+## Функциональность
 
-### Основные возможности
-1. Создание задач через REST API
-2. Асинхронная обработка задач в фоновом режиме
-3. Параллельная обработка нескольких задач
-4. Система приоритетов для задач
-5. Создание заведомо сломанных задач для тестирования
-6. Создание задач с повторными попытками выполнения
+- Создание, чтение, обновление и удаление задач
+- Асинхронное выполнение задач с использованием RabbitMQ
+- Приоритизация задач (LOW, MEDIUM, HIGH)
+- Отслеживание статусов задач (NEW, PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED)
+- Отмена выполняющихся задач
+- Мониторинг выполнения задач через веб-интерфейс
+- API для получения статистики по задачам
 
-### Статусная модель задач
-1. NEW - новая задача
-2. PENDING - ожидает обработки
-3. IN_PROGRESS - в процессе выполнения
-4. COMPLETED - завершено успешно
-5. FAILED - завершено с ошибкой
-6. CANCELLED - отменено
+## Технологии
 
-### Атрибуты задач
-1. Уникальный идентификатор
-2. Название
-3. Описание
-4. Приоритет (LOW, MEDIUM, HIGH)
-5. Статус
-6. Время создания
-7. Время начала выполнения
-8. Время завершения
-9. Результат выполнения
-10. Информация об ошибках (если есть)
+- **FastAPI**: Асинхронный веб-фреймворк для создания API
+- **SQLAlchemy**: ORM для работы с базой данных
+- **RabbitMQ**: Брокер сообщений для асинхронного выполнения задач
+- **PostgreSQL**: База данных для хранения задач и их статусов
+- **aio-pika**: Асинхронная библиотека для работы с RabbitMQ
+- **asyncpg**: Асинхронный драйвер для PostgreSQL
+- **Chart.js**: Библиотека для визуализации данных в мониторинге
+- **Tailwind CSS**: Фреймворк для стилизации веб-интерфейса
 
-## Технологический стек
+## Структура проекта
 
-- FastAPI - REST API фреймворк
-- Celery - асинхронная обработка задач
-- Redis - брокер сообщений и хранилище результатов
-- PostgreSQL - база данных
-- Docker - контейнеризация
-- Flower - мониторинг задач Celery
+```
+TaskManager/
+  ├── app/
+  │   ├── database/          # Настройка подключения к базе данных
+  │   ├── models/            # Модели SQLAlchemy
+  │   ├── routers/           # Маршруты FastAPI
+  │   ├── schemas/           # Pydantic-схемы для валидации данных
+  │   ├── services/          # Бизнес-логика
+  │   ├── tasks.py           # Обработчики задач
+  │   ├── worker.py          # Воркер для обработки задач из RabbitMQ
+  │   ├── monitoring.py      # Мониторинг задач
+  │   └── templates/         # HTML-шаблоны для мониторинга
+  ├── docker-compose.yml     # Настройка Docker Compose
+  ├── Dockerfile             # Настройка Docker
+  ├── main.py                # Точка входа в приложение
+  ├── requirements.txt       # Зависимости проекта
+  └── tests/                 # Тесты
+```
 
 ## Запуск проекта
 
-### С использованием Docker
+### С использованием Docker Compose
 
-```bash
-docker-compose up -d
-```
+1. Клонируйте репозиторий:
+   ```bash
+   git clone https://github.com/Goshansky/TaskManager.git
+   cd TaskManager
+   ```
 
-Сервисы будут доступны по следующим адресам:
-- API: http://localhost:8000
-- Flower (мониторинг задач): http://localhost:5555
+2. Создайте файл `.env` с переменными окружения:
+   ```
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=taskmanager
+   POSTGRES_HOST=db
+   RABBITMQ_DEFAULT_USER=guest
+   RABBITMQ_DEFAULT_PASS=guest
+   ```
 
-### Локальный запуск (без Docker)
+3. Запустите проект с помощью Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
 
-1. Установите зависимости:
-```bash
-pip install -r requirements.txt
-```
+4. API будет доступно по адресу: http://localhost:8000
+5. Мониторинг будет доступен по адресу: http://localhost:8000/monitor/dashboard
 
-2. Запустите Redis:
-```bash
-# Установите Redis и запустите сервер
-```
+### Без Docker
 
-3. Запустите PostgreSQL:
-```bash
-# Установите PostgreSQL и создайте базу данных task_manager
-```
+1. Установите и настройте PostgreSQL и RabbitMQ
+2. Установите зависимости:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. Запустите API сервер:
-```bash
-uvicorn main:app --reload
-```
+3. Создайте файл `.env` с переменными окружения:
+   ```
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=taskmanager
+   POSTGRES_HOST=localhost
+   RABBITMQ_DEFAULT_USER=guest
+   RABBITMQ_DEFAULT_PASS=guest
+   ```
 
-5. Запустите Celery worker:
-```bash
-celery -A app.worker.celery worker --loglevel=info
-```
+4. Запустите API-сервер:
+   ```bash
+   uvicorn main:app --reload
+   ```
 
-6. Запустите Flower для мониторинга:
-```bash
-celery -A app.worker.celery flower --port=5555
-```
+5. Запустите воркер в отдельном терминале:
+   ```bash
+   python worker.py
+   ```
 
 ## API Endpoints
 
 ### Задачи
 
-- **GET /tasks/** - Получение списка всех задач
-- **GET /tasks/{task_id}** - Получение задачи по ID
-- **POST /tasks/** - Создание новой задачи
-- **POST /tasks/broken** - Создание заведомо сломанной задачи
-- **POST /tasks/retry** - Создание задачи с повторными попытками
-- **PUT /tasks/{task_id}** - Обновление задачи (только title, description и priority)
-- **DELETE /tasks/{task_id}** - Удаление задачи
-- **POST /tasks/{task_id}/cancel** - Отмена выполнения задачи
+- `POST /tasks/` - Создать новую задачу
+- `POST /tasks/broken` - Создать задачу, которая завершится с ошибкой (для тестирования)
+- `GET /tasks/` - Получить список задач с возможностью фильтрации по статусу и приоритету
+- `GET /tasks/{task_id}` - Получить информацию о конкретной задаче
+- `PUT /tasks/{task_id}` - Обновить задачу
+- `DELETE /tasks/{task_id}` - Удалить задачу
+- `POST /tasks/{task_id}/cancel` - Отменить выполнение задачи
 
-## Примеры использования API
+### Мониторинг
 
-### Создание новой задачи
-
-```bash
-curl -X POST "http://localhost:8000/tasks/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Тестовая задача",
-    "description": "Описание тестовой задачи",
-    "priority": "HIGH"
-  }'
-```
-
-### Получение списка задач
-
-```bash
-curl -X GET "http://localhost:8000/tasks/"
-```
-
-### Отмена задачи
-
-```bash
-curl -X POST "http://localhost:8000/tasks/1/cancel"
-```
-
-## Мониторинг
-
-Для мониторинга задач используйте Flower, доступный по адресу http://localhost:5555 
+- `GET /monitor/dashboard` - Веб-интерфейс для мониторинга задач
+- `GET /monitor/stats` - API для получения статистики по задачам
 
 ## Тестирование
 
-Для тестирования API можно использовать Postman коллекцию `TaskManager.postman_collection.json`. 
+Для запуска тестов выполните:
+
+```bash
+pytest
+```
+
+## Postman коллекция
+
+В репозитории есть файл `TaskManager.postman_collection.json`, который содержит коллекцию запросов для Postman. Импортируйте его в Postman для удобного тестирования API. 

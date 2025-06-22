@@ -6,7 +6,6 @@ from app.services.task import (
     delete_task,
     cancel_task,
     create_broken_task,
-    create_retry_task,
 )
 
 __all__ = [
@@ -17,5 +16,4 @@ __all__ = [
     "delete_task",
     "cancel_task",
     "create_broken_task",
-    "create_retry_task",
 ]
