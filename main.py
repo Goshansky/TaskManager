@@ -8,7 +8,7 @@ from app.monitoring import setup_monitoring
 app = FastAPI(
     title="Task Manager API",
     description="Asynchronous Task Manager API with task queue and priority processing",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 app.include_router(tasks_router)
@@ -35,5 +35,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
 
 setup_monitoring(app)

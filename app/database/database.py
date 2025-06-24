@@ -6,10 +6,7 @@ from app.config import DATABASE_URL
 engine = create_async_engine(DATABASE_URL)
 
 AsyncSessionLocal = sessionmaker(
-    autocommit=False, 
-    autoflush=False, 
-    bind=engine, 
-    class_=AsyncSession
+    autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
 )
 
 Base = declarative_base()
