@@ -11,6 +11,8 @@
 - Отмена выполняющихся задач
 - Мониторинг выполнения задач через веб-интерфейс
 - API для получения статистики по задачам
+- Предусмотрена отказоустойчивость
+- Масштабирование достигается путем увеличения количества воркеров
 
 ## Технологии
 
@@ -54,14 +56,17 @@ TaskManager/
    cd TaskManager
    ```
 
-2. Создайте файл `.env` с переменными окружения:
+2. Создайте файл `.env` с переменными окружения (необязательно, в config.py всё указано):
    ```
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=postgres
-   POSTGRES_DB=taskmanager
-   POSTGRES_HOST=db
+   POSTGRES_DB=task_manager
+   POSTGRES_HOST=localhost
    RABBITMQ_DEFAULT_USER=guest
    RABBITMQ_DEFAULT_PASS=guest
+   RABBITMQ_PORT=5672
+   RABBITMQ_VHOST=/
+   TASK_CONCURRENCY=4
    ```
 
 3. Запустите проект с помощью Docker Compose:
@@ -71,34 +76,7 @@ TaskManager/
 
 4. API будет доступно по адресу: http://localhost:8000
 5. Мониторинг будет доступен по адресу: http://localhost:8000/monitor/dashboard
-
-### Без Docker
-
-1. Установите и настройте PostgreSQL и RabbitMQ
-2. Установите зависимости:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Создайте файл `.env` с переменными окружения:
-   ```
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=postgres
-   POSTGRES_DB=taskmanager
-   POSTGRES_HOST=localhost
-   RABBITMQ_DEFAULT_USER=guest
-   RABBITMQ_DEFAULT_PASS=guest
-   ```
-
-4. Запустите API-сервер:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-5. Запустите воркер в отдельном терминале:
-   ```bash
-   python worker.py
-   ```
+6. RabbitMQ: http://localhost:15672/ (Username: guest Password: guest)
 
 ## API Endpoints
 
@@ -116,14 +94,6 @@ TaskManager/
 
 - `GET /monitor/dashboard` - Веб-интерфейс для мониторинга задач
 - `GET /monitor/stats` - API для получения статистики по задачам
-
-## Тестирование
-
-Для запуска тестов выполните:
-
-```bash
-pytest
-```
 
 ## Postman коллекция
 
