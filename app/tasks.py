@@ -26,12 +26,14 @@ async def get_task(db: AsyncSession, task_id: int):
     return result.scalars().first()
 
 
-async def set_task_status(db: AsyncSession, task_id: int, status: TaskStatus, result=None, error_info=None):
+async def set_task_status(
+    db: AsyncSession, task_id: int, status: TaskStatus, result=None, error_info=None
+):
     task_update = InternalTaskUpdate(status=status)
-    
+
     if result:
         task_update.result = result
-    
+
     if error_info:
         task_update.error_info = error_info
 
@@ -44,15 +46,22 @@ async def set_task_status(db: AsyncSession, task_id: int, status: TaskStatus, re
     if "status" in update_data:
         new_status = update_data["status"]
 
-        if new_status == TaskStatus.IN_PROGRESS and task.status != TaskStatus.IN_PROGRESS:
+        if (
+            new_status == TaskStatus.IN_PROGRESS
+            and task.status != TaskStatus.IN_PROGRESS
+        ):
             task.started_at = datetime.now()
 
-        if new_status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED] and task.completed_at is None:
+        if (
+            new_status
+            in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]
+            and task.completed_at is None
+        ):
             task.completed_at = datetime.now()
 
     for key, value in update_data.items():
         setattr(task, key, value)
-    
+
     await db.commit()
     await db.refresh(task)
     return task
@@ -61,7 +70,7 @@ async def set_task_status(db: AsyncSession, task_id: int, status: TaskStatus, re
 @register_task_handler("process_task")
 async def process_task(task_id: int):
     logger.info(f"Processing task {task_id}")
-    
+
     db = await get_db_session()
     try:
         task = await get_task(db, task_id)
@@ -74,17 +83,19 @@ async def process_task(task_id: int):
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
 
         await set_task_status(db, task_id, TaskStatus.PENDING)
-        
+
         task = await get_task(db, task_id)
         if task.status == TaskStatus.CANCELLED:
             logger.info(f"Task {task_id} was cancelled while setting status to PENDING")
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
-        
+
         await set_task_status(db, task_id, TaskStatus.IN_PROGRESS)
-        
+
         task = await get_task(db, task_id)
         if task.status == TaskStatus.CANCELLED:
-            logger.info(f"Task {task_id} was cancelled while setting status to IN_PROGRESS")
+            logger.info(
+                f"Task {task_id} was cancelled while setting status to IN_PROGRESS"
+            )
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
 
         if task.priority == "HIGH":
@@ -98,8 +109,11 @@ async def process_task(task_id: int):
             task = await get_task(db, task_id)
             if task.status == TaskStatus.CANCELLED:
                 logger.info(f"Task {task_id} was cancelled during processing")
-                return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
-                
+                return {
+                    "status": "cancelled",
+                    "message": f"Task {task_id} was cancelled",
+                }
+
             await asyncio.sleep(1)
             logger.info(f"Task {task_id} progress: {i+1}/{processing_time}")
 
@@ -108,11 +122,13 @@ async def process_task(task_id: int):
             logger.info(f"Task {task_id} was cancelled before completion")
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
 
-        result = f"Task {task_id} completed successfully at {datetime.now().isoformat()}"
+        result = (
+            f"Task {task_id} completed successfully at {datetime.now().isoformat()}"
+        )
         await set_task_status(db, task_id, TaskStatus.COMPLETED, result=result)
-        
+
         return {"status": "success", "result": result}
-        
+
     except Exception as e:
         error_message = f"Error processing task {task_id}: {str(e)}"
         logger.error(error_message)
@@ -125,7 +141,7 @@ async def process_task(task_id: int):
 @register_task_handler("process_broken_task")
 async def process_broken_task(task_id: int):
     logger.info(f"Processing broken task {task_id}")
-    
+
     db = await get_db_session()
     try:
         task = await get_task(db, task_id)
@@ -138,21 +154,30 @@ async def process_broken_task(task_id: int):
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
 
         await set_task_status(db, task_id, TaskStatus.PENDING)
-        
+
         task = await get_task(db, task_id)
         if task.status == TaskStatus.CANCELLED:
             logger.info(f"Task {task_id} was cancelled while setting status to PENDING")
             return {"status": "cancelled", "message": f"Task {task_id} was cancelled"}
-        
+
         await set_task_status(db, task_id, TaskStatus.IN_PROGRESS)
 
         await asyncio.sleep(2)
 
         result = "This task was deliberately broken"
-        await set_task_status(db, task_id, TaskStatus.FAILED, result=result, error_info="This task is deliberately broken and will always fail")
-        
-        return {"status": "error", "message": "This task is deliberately broken and will always fail"}
-        
+        await set_task_status(
+            db,
+            task_id,
+            TaskStatus.FAILED,
+            result=result,
+            error_info="This task is deliberately broken and will always fail",
+        )
+
+        return {
+            "status": "error",
+            "message": "This task is deliberately broken and will always fail",
+        }
+
     except Exception as e:
         error_message = f"Error processing task {task_id}: {str(e)}"
         logger.error(error_message)
