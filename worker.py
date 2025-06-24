@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from app.worker import start_worker
+import app.tasks
 
 logging.basicConfig(
     level=logging.INFO,
