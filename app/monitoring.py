@@ -161,5 +161,4 @@ async def get_monitor_dashboard():
 
 
 def setup_monitoring(app: FastAPI):
-    """Add monitoring routes to the FastAPI app"""
     app.include_router(router)

@@ -117,13 +117,11 @@ async def cancel_task(db: AsyncSession, task_id: int) -> Dict[str, Any]:
     if db_task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
         return {"success": False, "message": f"Task is already in final state: {db_task.status}"}
 
-    # Немедленно отменяем задачу в базе данных
     task_update = InternalTaskUpdate(
         status=TaskStatus.CANCELLED,
         result=f"Task was cancelled at {datetime.now().isoformat()}"
     )
-    
-    # Обновляем задачу в базе данных
+
     await update_task(db=db, task_id=task_id, task=task_update)
     
     return {"success": True, "message": "Task cancelled successfully"}
